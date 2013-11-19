@@ -106,43 +106,53 @@ class switchThread(threading.Thread):
         self.theInputs = theInputs
         self.theOutputs = theOutputs            
     def run(self):
+        try:
+                ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
+        except:
+            print'Exception in opening Switch serial'
         while (not xbmc.abortRequested):
-            time.sleep(0.1) 
-            while theQueue:
-                #print '**  beginning of command queue loop'
-                command = theQueue.popleft()
-                time.sleep(0.02)                    
-                if command[0] == 'switch':
-                    #print'*   device type: SWITCH'
-                    if command[1] == 'reset':
-                        #print'    command type: RESET'
-                        xbmc.executebuiltin('Notification(Video Source Control, Resetting All Displays to Default')
+            if ser.isOpen() == False:
+                try:
                         ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
-                        ser.write('\x01\x82\x81\x81')
-                        time.sleep(0.02)
-                        ser.write('\x01\x83\x82\x81')
-                        time.sleep(0.02)
-                        ser.write('\x01\x84\x83\x81')
-                        time.sleep(0.02)
-                        ser.write('\x01\x83\x84\x81')
-                        time.sleep(0.02)
-                        ser.write('\x01\x82\x85\x81')
-                        time.sleep(0.02)
-                        ser.write('\x01\x87\x86\x81')
-                        ser.close()
-                    else:
-                        #print'    command type: SET ' + theOutputs[command[2]]["name"] + ' TO ' + theInputs[command[1]]["name"]
-                        xbmc.executebuiltin('Notification(Video Source Control, Switching ' + theOutputs[command[2]]["name"] + ' to ' + theInputs[command[1]]["name"] + ')')
-                        ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
-                        ser.write('\x01' + theInputs[command[1]]["hexChar"] + theOutputs[command[2]]["hexChar"] + '\x81')
-                        ser.close()  
-                    ## end switch loop
-                    
+                except:
+                        print 'Exception in opening Switch serial'
+                        continue
+            time.sleep(0.1)
+            try:            
+                while self.theQueue:
+                    #print '**  beginning of command queue loop'
+                    command = self.theQueue.popleft()
+                    time.sleep(0.02)                    
+                    if command[0] == 'switch':
+                        #print'*   device type: SWITCH'
+                        if command[1] == 'reset':
+                            #print'    command type: RESET'
+                            xbmc.executebuiltin('Notification(Video Source Control, Resetting All Displays to Default')
+                            ser.flushInput()
+                            ser.flushOutput()
+                            ser.write('\x01\x82\x81\x81')
+                            time.sleep(0.02)
+                            ser.write('\x01\x83\x82\x81')
+                            time.sleep(0.02)
+                            ser.write('\x01\x84\x83\x81')
+                            time.sleep(0.02)
+                            ser.write('\x01\x83\x84\x81')
+                            time.sleep(0.02)
+                            ser.write('\x01\x82\x85\x81')
+                            time.sleep(0.02)
+                            ser.write('\x01\x87\x86\x81')
+                        else:
+                            #print'    command type: SET ' + theOutputs[command[2]]["name"] + ' TO ' + theInputs[command[1]]["name"]
+                            xbmc.executebuiltin('Notification(Video Source Control, Switching ' + theOutputs[command[2]]["name"] + ' to ' + theInputs[command[1]]["name"] + ')')
+                            ser.write('\x01' + theInputs[command[1]]["hexChar"] + theOutputs[command[2]]["hexChar"] + '\x81')
+                        ## end switch loop
+            except:
+                print 'Exception in writing Switch serial'
+                continue      
             # This is where the serial status stuff begins
             #print'*** Begin status section'
             try:
                 #print'*   begin reading status of Switch Output 1'
-                ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
                 #print'    serial port opened'
                 ser.flushInput()
                 #print'    serial input flushed'
@@ -152,11 +162,11 @@ class switchThread(threading.Thread):
                 #print'    read 2 bytes to throw away'
                 out = ser.read()
                 #print'    read output byte'
-                ser.close()
                 #print'    closing serial port'
                 foo = binascii.b2a_qp(out)
                 #print'    converting binary to ascii'
                 source = foo[2]
+                ser.read()
                 #print'    putting results in status dictionary'
                 theStatus['outputs'][0]['inputNumber'] = source
                 theStatus['outputs'][0]['inputName'] = theInputs[source]['name']
@@ -167,14 +177,13 @@ class switchThread(threading.Thread):
             
             try:
                 #print'    begin reading status of Switch Output 2'
-                ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
                 ser.flushInput()
                 ser.write('\x05\x80\x82\x81')
                 ser.read(2)
                 out = ser.read()
-                ser.close()
                 foo = binascii.b2a_qp(out)
                 source = foo[2]
+                ser.read()
                 theStatus['outputs'][1]['inputNumber'] = source
                 theStatus['outputs'][1]['inputName'] = theInputs[source]['name']
                 #print'    finished reading status of Switch Output 2'
@@ -184,14 +193,13 @@ class switchThread(threading.Thread):
             
             try:
                 #print'    begin reading status of Switch Output 3'
-                ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
                 ser.flushInput()
                 ser.write('\x05\x80\x83\x81')
                 ser.read(2)
                 out = ser.read()
-                ser.close()
                 foo = binascii.b2a_qp(out)
                 source = foo[2]
+                ser.read()
                 theStatus['outputs'][2]['inputNumber'] = source
                 theStatus['outputs'][2]['inputName'] = theInputs[source]['name']
                 #print'    finished reading status of Switch Output 3'
@@ -201,14 +209,13 @@ class switchThread(threading.Thread):
 
             try:
                 #print'    begin reading status of Switch Output 4'
-                ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
                 ser.flushInput()
                 ser.write('\x05\x80\x84\x81')
                 ser.read(2)
                 out = ser.read()
-                ser.close()
                 foo = binascii.b2a_qp(out)
                 source = foo[2]
+                ser.read()
                 theStatus['outputs'][3]['inputNumber'] = source
                 theStatus['outputs'][3]['inputName'] = theInputs[source]['name']
                 #print'    finished reading status of Switch Output 4'
@@ -218,14 +225,13 @@ class switchThread(threading.Thread):
             
             try:
                 #print'    begin reading status of Switch Output 5'
-                ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
                 ser.flushInput()
                 ser.write('\x05\x80\x85\x81')
                 ser.read(2)
                 out = ser.read()
-                ser.close()
                 foo = binascii.b2a_qp(out)
                 source = foo[2]
+                ser.read()
                 theStatus['outputs'][4]['inputNumber'] = source
                 theStatus['outputs'][4]['inputName'] = theInputs[source]['name']
                 #print'    finished reading status of Switch Output 5'
@@ -235,14 +241,13 @@ class switchThread(threading.Thread):
                   
             try:
                 #print'    begin reading status of Switch Output 6'
-                ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
                 ser.flushInput()
                 ser.write('\x05\x80\x86\x81')
                 ser.read(2)
                 out = ser.read()
-                ser.close()
                 foo = binascii.b2a_qp(out)
                 source = foo[2]
+                ser.read()
                 theStatus['outputs'][5]['inputNumber'] = source
                 theStatus['outputs'][5]['inputName'] = theInputs[source]['name']
                 #print'    finished reading status of Switch Output 6'
@@ -252,14 +257,13 @@ class switchThread(threading.Thread):
                   
             try:
                 #print'    begin reading status of Switch Output 7'
-                ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
                 ser.flushInput()
                 ser.write('\x05\x80\x87\x81')
                 ser.read(2)
                 out = ser.read()
-                ser.close()
                 foo = binascii.b2a_qp(out)
                 source = foo[2]
+                ser.read()
                 theStatus['outputs'][6]['inputNumber'] = source
                 theStatus['outputs'][6]['inputName'] = theInputs[source]['name']
                 #print'    finished reading status of Switch Output 7'
@@ -269,20 +273,21 @@ class switchThread(threading.Thread):
                     
             try:
                 #print'    begin reading status of Switch Output 8'
-                ser = serial.Serial(SWITCH_COM, 9600, timeout=0.3)
                 ser.flushInput()
                 ser.write('\x05\x80\x88\x81')
                 ser.read(2)
                 out = ser.read()
-                ser.close()
                 foo = binascii.b2a_qp(out)
                 source = foo[2]
+                ser.read()
                 theStatus['outputs'][7]['inputNumber'] = source
                 theStatus['outputs'][7]['inputName'] = theInputs[source]['name']
                 #print'    finished reading status of Switch Output 8'
             except:
                 print'Exception in reading status of Switch Output 8'
-                continue                          
+                continue   
+                
+        ser.close() #close serial after thread completes    
 
 
 
@@ -294,38 +299,53 @@ class displayThread(threading.Thread):
         self.theQueue = theQueue
         self.comPort = comPort
     def run(self):
+        try:
+            ser2 = serial.Serial(self.comPort, 9600, timeout=0.3)
+        except:
+            print 'Exception in opening Display serial'
         while (not xbmc.abortRequested):
+            if ser2.isOpen() == False:
+                try:
+                    ser2 = serial.Serial(self.comPort, 9600, timeout=0.3)
+                except:
+                    print 'Exception in opening Display serial'
+                    continue                    
             time.sleep(0.1)
-            while self.theQueue:
-                #print '**  beginning of command queue loop'
-                command = self.theQueue.popleft()
-                if command[0] == 'display':
-                    #print'*   device type: DISPLAY'
-                    if command[2] == 'power':
-                        #print'    command type: POWER TOGGLE ' + theOutputs[command[1]]["name"]
-                        ser = serial.Serial(int(theOutputs[command[1]]["comPort"]), 9600, timeout=0.3)
-                        ser.write('\x08\x22\x00\x00\x00\x00\xd6')
-                        ser.close()
-                    elif command[2] == 'volume':
-                        #print'    command type: VOLUME ' + theOutputs[command[1]]["name"]
-                        if command[3] == '+':
-                            #print'    command: VOLUME UP'
-                            ser = serial.Serial(int(theOutputs[command[1]]["comPort"]), 9600, timeout=0.3)
-                            ser.write('\x08\x22\x01\x00\x01\x00\xd4')
-                            ser.close()
-                        elif command[3] == '-':
-                            #print'    command: VOLUME DOWN'
-                            ser = serial.Serial(int(theOutputs[command[1]]["comPort"]), 9600, timeout=0.3)
-                            ser.write('\x08\x22\x01\x00\x02\x00\xd3')
-                            ser.close()
-                        else:
-                            #print'    command: MUTE'
-                            ser = serial.Serial(int(theOutputs[command[1]]["comPort"]), 9600, timeout=0.3)
-                            ser.write('\x08\x22\x02\x00\x00\x00\xd4')
-                            ser.close()
-            #print'**  ending of command queue loop'
-            
- class tunerThread(threading.Thread):
+            try:
+                while self.theQueue:
+                    #print '**  beginning of command queue loop'
+                    command = self.theQueue.popleft()
+                    if command[0] == 'display':
+                        #print'*   device type: DISPLAY'
+                        if command[2] == 'power':
+                            #print'    command type: POWER TOGGLE ' + theOutputs[command[1]]["name"]
+                            ser2.flushInput()
+                            ser2.flushOutput()                          
+                            ser2.write('\x08\x22\x00\x00\x00\x00\xd6')
+                        elif command[2] == 'volume':
+                            #print'    command type: VOLUME ' + theOutputs[command[1]]["name"]
+                            if command[3] == '+':
+                                #print'    command: VOLUME UP'
+                                ser2.flushInput()
+                                ser2.flushOutput()  
+                                ser2.write('\x08\x22\x01\x00\x01\x00\xd4')
+                            elif command[3] == '-':
+                                #print'    command: VOLUME DOWN'
+                                ser2.flushInput()
+                                ser2.flushOutput()  
+                                ser2.write('\x08\x22\x01\x00\x02\x00\xd3')
+                            else:
+                                #print'    command: MUTE'
+                                ser2.flushInput()
+                                ser2.flushOutput()  
+                                ser2.write('\x08\x22\x02\x00\x00\x00\xd4')
+                #print'**  ending of command queue loop'
+            except:
+                print 'Exception in writing to Display serial'
+                continue
+        ser2.close() #close serial after thread completes
+        
+class tunerThread(threading.Thread):
     def __init__(self, threadID, name, theQueue, theStatus):
         threading.Thread.__init__(self)
         self.threadID = threadID
@@ -333,130 +353,152 @@ class displayThread(threading.Thread):
         self.theQueue = theQueue
         self.theStatus = theStatus
     def run(self):
-        while (not xbmc.abortRequested):
-            time.sleep(0.1)
-            while self.theQueue:               
-                #print '**  beginning of command queue loop'
-                command = self.theQueue.popleft()
-                if command[0] == 'tuner':   
-                    #print '*   device type: TUNER'
-                    if command[1] == 'channel':
-                        #print '    command type: CHANNEL'
-                        if command[2] == '+':
-                            #print '    command: CHANNEL UP'
-                            ser = serial.Serial(TUNER_COM, 9600, timeout=0.2)
-                            ser.write('>P1\x0d')
-                            ser.write('>TU\x0d')
-                            ser.close()
-                        elif command[2] == '-':
-                            #print '    command: CHANNEL DOWN'
-                            ser = serial.Serial(TUNER_COM, 9600, timeout=0.2)
-                            ser.write('>P1\x0d')
-                            ser.write('>TD\x0d')
-                            ser.close()
-                        else:
-                            #print '    command: TUNE TO ' + command[2]
-                            ser = serial.Serial(TUNER_COM, 9600, timeout=0.2)
-                            ser.write('>P1\x0d')
-                            ser.write('>TC=' + command[2] + '\x0d')
-                            ser.close()
-                    elif command[1] == 'power':
-                        #print '    command type: POWER'
-                        if command[2] == 'on':
-                            #print '    command: POWER ON'
-                            ser = serial.Serial(TUNER_COM, 9600, timeout=0.2)
-                            ser.write('>P1\x0d')
-                            ser.close()
-                        elif command[2] == 'off':
-                            #print'    command: POWER OFF'
-                            ser = serial.Serial(TUNER_COM, 9600, timeout=0.2)
-                            ser.write('>P0\x0d')
-                            ser.close()
-                        elif command[2] == 'toggle':
-                            #print'    command: POWER TOGGLE'
-                            ser = serial.Serial(TUNER_COM, 9600, timeout=0.2)
-                            ser.write('>PT\x0d')
-                            ser.close()
-							
-            # Tuner read
-            #print'**  Begin Tuner status'
-            try:
-                #print'    starting tuner channel number read'
-                ser = serial.Serial(TUNER_COM, 9600, timeout=0.3)
-                ser.flushInput()
-                ser.write('>ST\x0d')
-                ser.read(4)
-                majorChannel = ser.read(3)
-                #print'    ' + majorChannel
-                ser.read(4)
-                minorChannel = ser.read(3)
-                #print'    ' + minorChannel
-                ser.close()
-                theStatus['tuner']['majorChannel'] = majorChannel
-                theStatus['tuner']['minorChannel'] = minorChannel
-                #print'    finished tuner channel number read'
-            except:
-                print 'Exception in reading Tuner Channel Info'
-                continue
-            
-            # try:
-                # print '*   starting tuner channel name read'
-                # ser = serial.Serial(TUNER_COM, 9600, timeout=1.0)
-                # print '    serial port opened'
-                # ser.flushInput()
-                # print '    serial input flushed'
-                # ser.write('>NC\x0d')
-                # print '    channel name command written'
-                # ser.read(4)
-                # print '    read and throw away first four bytes'
-                # channelName = ''
-                # print '    read until you see a carriage return'
-                # while True:
-                    # byte=ser.read()
-                    # if byte == '\r':
-                        # break
-                    # channelName += byte
-                # print '    ' + channelName
-                # print '    finished reading channel name'
-                # ser.close()
-                # print '    serial port closed'
-                # theStatus['tuner']['channelName'] = channelName
-                # print '*   finished tuner channel name read'
-            # except:
-                # print 'Exception in reading Tuner Channel Name'
-                # continue
-            
-            # try:
-                # print '*   starting tuner program name read'
-                # ser = serial.Serial(TUNER_COM, 9600, timeout=1.0)
-                # print '    serial port opened'
-                # ser.flushInput()
-                # print '    serial input flushed'
-                # ser.write('>NP\x0d')
-                # print '    program name command written'
-                # ser.read(4)
-                # print '    read and throw away first four bytes'
-                # programName = ''
-                # print '    read until you see a carriage return'
-                # while True:
-                    # byte=ser.read()
-                    # if byte == '\r':
-                        # break
-                    # programName += byte
-                # print '    ' + programName
-                # print '    finished reading program name'
-                # ser.close()
-                # print '    serial port closed'
-                # theStatus['tuner']['programName'] = programName
-                # print '    finished tuner program name read'
-            # except:
-                # print 'Exception in reading Tuner Program Name'
-                # continue
-            # print '*** End status section'
+        try:
+            ser3 = serial.Serial(TUNER_COM, 9600, timeout=0.2)
+        except:
+            print 'Exception in opening Tuner serial'
+        try:
+            while (not xbmc.abortRequested):
+                if ser3.isOpen() == False:
+                    try:
+                        ser3 = serial.Serial(TUNER_COM, 9600, timeout=0.2)
+                    except:
+                        print 'Exception in opening Tuner Serial'
+                        continue
+                time.sleep(0.1)
+                try:
+                    while self.theQueue:               
+                        #print '**  beginning of command queue loop'
+                        command = self.theQueue.popleft()
+                        if command[0] == 'tuner':   
+                            #print '*   device type: TUNER'
+                            if command[1] == 'channel':
+                                #print '    command type: CHANNEL'
+                                if command[2] == '+':
+                                    #print '    command: CHANNEL UP'
+                                    ser3.flushInput()
+                                    ser3.flushOutput()   
+                                    ser3.write('>P1\x0d')
+                                    ser3.write('>TU\x0d')
+                                elif command[2] == '-':
+                                    #print '    command: CHANNEL DOWN'
+                                    ser3.write('>P1\x0d')
+                                    ser3.write('>TD\x0d')
+                                else:
+                                    #print '    command: TUNE TO ' + command[2]
+                                    ser3.flushInput()
+                                    ser3.flushOutput()   
+                                    ser3.write('>P1\x0d')
+                                    ser3.write('>TC=' + command[2] + '\x0d')
+                            elif command[1] == 'power':
+                                #print '    command type: POWER'
+                                if command[2] == 'on':
+                                    #print '    command: POWER ON'
+                                    ser3.flushInput()
+                                    ser3.flushOutput()   
+                                    ser3.write('>P1\x0d')
+                                elif command[2] == 'off':
+                                    #print'    command: POWER OFF'
+                                    ser3.flushInput()
+                                    ser3.flushOutput()   
+                                    ser3.write('>P0\x0d')
+                                elif command[2] == 'toggle':
+                                    #print'    command: POWER TOGGLE'
+                                    ser3.flushInput()
+                                    ser3.flushOutput()   
+                                    ser3.write('>PT\x0d')
+                except:
+                    print 'Exception writing to Tuner serial'
+                    continue        
+                        
+                # Tuner read
+                #print'**  Begin Tuner status'
+                try:
+                    #print'    starting tuner channel number read'
+                    ser3.flushInput()
+                    ser3.write('>ST\x0d')
+                    ser3.read(4)
+                    majorChannel = ser3.read(3)
+                    #print'    ' + majorChannel
+                    ser.read(4)
+                    minorChannel = ser3.read(3)
+                    #print'    ' + minorChannel
+                    theStatus['tuner']['majorChannel'] = majorChannel
+                    theStatus['tuner']['minorChannel'] = minorChannel
+                    #print'    finished tuner channel number read'
+                except:
+                    print 'Exception in reading Tuner Channel Info'
+                    continue
                 
+                # try:
+                    # print '*   starting tuner channel name read'
+                    # ser = serial.Serial(TUNER_COM, 9600, timeout=1.0)
+                    # print '    serial port opened'
+                    # ser.flushInput()
+                    # print '    serial input flushed'
+                    # ser.write('>NC\x0d')
+                    # print '    channel name command written'
+                    # ser.read(4)
+                    # print '    read and throw away first four bytes'
+                    # channelName = ''
+                    # print '    read until you see a carriage return'
+                    # while True:
+                        # byte=ser.read()
+                        # if byte == '\r':
+                            # break
+                        # channelName += byte
+                    # print '    ' + channelName
+                    # print '    finished reading channel name'
+                    # ser.close()
+                    # print '    serial port closed'
+                    # theStatus['tuner']['channelName'] = channelName
+                    # print '*   finished tuner channel name read'
+                # except:
+                    # print 'Exception in reading Tuner Channel Name'
+                    # continue
+                
+                # try:
+                    # print '*   starting tuner program name read'
+                    # ser = serial.Serial(TUNER_COM, 9600, timeout=1.0)
+                    # print '    serial port opened'
+                    # ser.flushInput()
+                    # print '    serial input flushed'
+                    # ser.write('>NP\x0d')
+                    # print '    program name command written'
+                    # ser.read(4)
+                    # print '    read and throw away first four bytes'
+                    # programName = ''
+                    # print '    read until you see a carriage return'
+                    # while True:
+                        # byte=ser.read()
+                        # if byte == '\r':
+                            # break
+                        # programName += byte
+                    # print '    ' + programName
+                    # print '    finished reading program name'
+                    # ser.close()
+                    # print '    serial port closed'
+                    # theStatus['tuner']['programName'] = programName
+                    # print '    finished tuner program name read'
+                # except:
+                    # print 'Exception in reading Tuner Program Name'
+                    # continue
+                # print '*** End status section'
+        except:
+            print 'Exception in opening Tuner serial'
+                    
+
 if (__name__  == "__main__"):
     xbmc.log('Version %s started' % __addonversion__)
-    theCommandQueue = deque()
+    theSwitchQueue = deque()
+    theLeftDisplayQueue = deque()
+    theCenterADisplayQueue = deque()
+    theCenterBDisplayQueue = deque()
+    theRightADisplayQueue = deque()
+    theRightBDisplayQueue = deque()
+    theActionCenterDisplayQueue = deque()
+    theExecQueue = deque()
+    theTunerQueue = deque()
     theCounter = 0
     theInputs = {"1":{"name":"ClickShare","hexChar":'\x81'},"2":{"name":"MCC Video 1","hexChar":'\x82'},"3":{"name":"MCC Video 2","hexChar":'\x83'},"4":{"name":"MCC Video 3","hexChar":'\x84'},"5":{"name":"Apple TV","hexChar":'\x85'},"6":{"name":"WiDi","hexChar":'\x86'},"7":{"name":"VADER","hexChar":'\x87'},"8":{"name":"TV Tuner","hexChar":'\x88'},"0":{"name":"N/A","hexChar":'\x80'}}
     theOutputs = {"1":{"name":"Left","hexChar":'\x81',"comPort":"6"},"2":{"name":"Center A","hexChar":'\x82',"comPort":"9"},"3":{"name":"Center B","hexChar":'\x83',"comPort":"10"},"4":{"name":"Right A","hexChar":'\x84',"comPort":"8"},"5":{"name":"Right B","hexChar":'\x85',"comPort":"7"},"6":{"name":"Action Center","hexChar":'\x86',"comPort":"11"},"7":{"name":"HEVS 1","hexChar":'\x87',"comPort":"0"},"8":{"name":"HEVS 2","hexChar":'\x88',"comPort":"0"}}
@@ -468,44 +510,44 @@ if (__name__  == "__main__"):
     server_thread.daemon = True
     server_thread.start()
     #print "starting the counter"
-	
-	
+    
+    
     # Create new threads
     switchThread               = switchThread (1, "Switch Thread", theStatus, theSwitchQueue, theInputs, theOutputs)
     leftDisplayThread          = displayThread(2, theOutputs["1"]["name"], theLeftDisplayQueue,   int(theOutputs["1"]["comPort"]))
     centerADisplayThread       = displayThread(3, theOutputs["2"]["name"], theCenterADisplayQueue, int(theOutputs["2"]["comPort"]))
-    centerBDisplayThread       = displayThread(4, theOutputs["3"]["name"], theCenterBDisplayQueue, int(theOutputs["2"]["comPort"]))
-	rightADisplayThread        = displayThread(5, theOutputs["4"]["name"], theRightADisplayQueue,  int(theOutputs["3"]["comPort"]))
-	rightBDisplayThread        = displayThread(6, theOutputs["5"]["name"], theRightBDisplayQueue,  int(theOutputs["3"]["comPort"]))
-	actionCenterDisplayThread  = displayThread(7, theOutputs["6"]["name"], theActionCenterDisplayQueue,  int(theOutputs["3"]["comPort"]))
+    centerBDisplayThread       = displayThread(4, theOutputs["3"]["name"], theCenterBDisplayQueue, int(theOutputs["3"]["comPort"]))
+    rightADisplayThread        = displayThread(5, theOutputs["4"]["name"], theRightADisplayQueue,  int(theOutputs["4"]["comPort"]))
+    rightBDisplayThread        = displayThread(6, theOutputs["5"]["name"], theRightBDisplayQueue,  int(theOutputs["5"]["comPort"]))
+    actionCenterDisplayThread  = displayThread(7, theOutputs["6"]["name"], theActionCenterDisplayQueue,  int(theOutputs["6"]["comPort"]))
     tunerThread                = tunerThread  (8, "Tuner Thread", theTunerQueue, theStatus)
 
     # Set threads at daemons
     switchThread.daemon = True
-    leftDisplayThread.daemon = True	
-    centerADisplayThread.daemon = True	
-    centerBDisplayThread.daemon = True	
-    rightADisplayThread.daemon = True	
-    rightBDisplayThread.daemon = True		
-    actionCenterDisplayThread.daemon = True	
-    tunerThread.daemon = True	
-	
+    leftDisplayThread.daemon = True 
+    centerADisplayThread.daemon = True  
+    centerBDisplayThread.daemon = True  
+    rightADisplayThread.daemon = True   
+    rightBDisplayThread.daemon = True       
+    actionCenterDisplayThread.daemon = True 
+    tunerThread.daemon = True   
+    
     # Start new threads
     switchThread.start()  
     leftDisplayThread.start()  
     centerADisplayThread.start()  
     centerBDisplayThread.start()  
     rightADisplayThread.start()  
-    rightBDisplayThread.start()  	
+    rightBDisplayThread.start()     
     actionCenterDisplayThread.start()  
     tunerThread.start()  
-	
+    
     while (not xbmc.abortRequested):
         time.sleep(0.1)
         theCounter += 1
         while theExecQueue:
             #print '**  beginning of command queue loop'
-            command = theExecQueue.popleft()		
+            command = theExecQueue.popleft()        
             if command[0] == 'exec':
                 #print'*   command type: SCRIPT EXECUTION'
                 if len(command) == 1:
@@ -520,7 +562,7 @@ if (__name__  == "__main__"):
                 else:
                     #print'    command: running ' + urllib.unquote_plus(command[1])
                     xbmc.executebuiltin('RunScript(' + urllib.unquote_plus(command[1]) + ',' + urllib.unquote_plus(command[2]) + ',' + urllib.unquote_plus(command[3]) + ')')
-	
+    
     print "Exiting Main Thread"
 
     print "starting server shutdown"
